@@ -18,6 +18,7 @@
 #include "views/craft_view.h"
 #include "subghz/rollcall_rx.h"
 #include "subghz/rollcall_tx.h"
+#include "subghz/rollcall_bench_fsk.h"
 
 #define ROLLCALL_TAG "RollCall"
 
@@ -40,6 +41,9 @@ typedef enum {
     RollCallCustomEventAutoManual,
     // "Up" pressed in the diff view -> jump to Craft & Call.
     RollCallCustomEventDiffCraft,
+    // Bench FSK: a packet arrived from the worker thread / "Send PING" pressed.
+    RollCallCustomEventBenchFskRx,
+    RollCallCustomEventBenchFskPing,
 } RollCallCustomEvent;
 
 typedef struct {
@@ -65,6 +69,13 @@ typedef struct {
 
     // Transmitter (app-lifetime; used by the craft scene).
     RollCallTx* tx;
+
+    // Bench FSK link to the RAK3401 tester + worker->GUI hand-off queue
+    // (active during the bench_fsk scene).
+    RollCallBenchFsk* bench_fsk;
+    FuriMessageQueue* bench_fsk_queue;
+    BenchFskPacket bench_fsk_last;
+    float bench_fsk_last_rssi;
 
     // Seed key handed to the Craft scene (predicted next burst, or last capture).
     uint64_t craft_seed;

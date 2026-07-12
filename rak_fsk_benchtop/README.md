@@ -33,6 +33,19 @@ made safe and lawful. Never place the RAK and Flipper antennas close together.
 > prior capture, change `SyncWord[]` in `src/main.cpp:15` -- just keep the
 > Flipper-side decoder in sync with whatever you pick.
 
+## Flipper-side companion
+
+The Flipper side of this bench test is RollCall's **Bench FSK** scene
+(`../scenes/rollcall_scene_bench_fsk.c`, `../subghz/bench_fsk_codec.{h,c}`,
+`../subghz/rollcall_bench_fsk.{h,c}`) -- see the top-level `../README.md`'s
+"Bench FSK" section. The RF parameters above were checked against Flipper's
+actual CC1101 register table for the stock `FM238` preset (not just its name):
+`MDMCFG3 = 0x83` / `MDMCFG4 = 0x67` set **4.79794 kBaud**, `DEVIATN = 0x04` sets
+**2.380371 kHz** deviation -- both match this project's RadioLib config, and
+`MDMCFG2 = 0x04` confirms CC1101's hardware sync/preamble detection is off in
+this preset, which is why the Flipper side does its own software bit-sync and
+framing rather than relying on any hardware packet engine.
+
 ## Packet format
 
 The SX1262 uses variable packet length mode. Its PHY length byte is outside the

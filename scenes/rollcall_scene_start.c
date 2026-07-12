@@ -9,6 +9,7 @@ typedef enum {
     StartItemAutoAnalysis,
     StartItemAnalyze,
     StartItemCraft,
+    StartItemBenchFsk,
     StartItemClear,
     StartItemAbout,
 } StartItem;
@@ -46,6 +47,9 @@ static void rollcall_scene_start_build(RollCall* app) {
 
     submenu_add_item(
         submenu, "Craft & Call", StartItemCraft, rollcall_scene_start_submenu_callback, app);
+
+    submenu_add_item(
+        submenu, "Bench FSK (RAK3401)", StartItemBenchFsk, rollcall_scene_start_submenu_callback, app);
 
     submenu_add_item(
         submenu, "Clear captures", StartItemClear, rollcall_scene_start_submenu_callback, app);
@@ -127,6 +131,9 @@ bool rollcall_scene_start_on_event(void* context, SceneManagerEvent event) {
             } else {
                 notification_message(app->notifications, &sequence_error);
             }
+            break;
+        case StartItemBenchFsk:
+            scene_manager_next_scene(app->scene_manager, RollCallSceneBenchFsk);
             break;
         case StartItemClear:
             capture_set_reset(&app->captures);

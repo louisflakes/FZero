@@ -32,6 +32,8 @@ static RollCall* rollcall_alloc(void) {
     capture_set_reset(&app->captures);
     app->rx = NULL;
     app->rx_queue = NULL;
+    app->bench_fsk = NULL;
+    app->bench_fsk_queue = NULL;
 
     app->gui = furi_record_open(RECORD_GUI);
     app->notifications = furi_record_open(RECORD_NOTIFICATION);

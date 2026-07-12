@@ -31,7 +31,13 @@ void rollcall_scene_about_on_enter(void* context) {
         "TX is region-limited. It sends\n"
         "fixed/counter codes exactly;\n"
         "encrypted rolling codes are not\n"
-        "predictable from captures.");
+        "predictable from captures.\n\n"
+        "BENCH FSK: a fixed 915.000 MHz\n"
+        "FM238 link to the RAK3401/13302\n"
+        "bench tester (rak_fsk_benchtop/).\n"
+        "Own framed packet, not a remote\n"
+        "protocol. Send PING, watch for\n"
+        "the RAK's PONG.");
     view_dispatcher_switch_to_view(app->view_dispatcher, RollCallViewWidget);
 }
 

@@ -7,6 +7,9 @@ App(
     fap_category="Sub-GHz",
     fap_version="0.1",
     fap_icon="rollcall.png",  # 10x10 1-bit PNG
+    # Default sources glob ("*.c*") would also pick up rak_fsk_benchtop/'s
+    # standalone PlatformIO/Arduino firmware (.cpp, separate toolchain).
+    sources=["*.c", "!rak_fsk_benchtop"],
     fap_description="Sub-GHz signal field analyzer: diff multiple captures bit-by-bit to see which fields are fixed vs. rolling. Analysis only.",
     fap_author="louisflakes",
     fap_weburl="https://github.com/louisflakes/fzero",

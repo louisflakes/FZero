@@ -99,6 +99,22 @@ Only captures with a **matching protocol and bit length** can be combined — a
 bitwise diff across different protocols is meaningless, so mismatches are
 rejected.
 
+## Bench FSK (interop test rig)
+
+**Bench FSK** is a separate, fixed-configuration mode (menu item "Bench FSK
+(RAK3401)") for interop testing against the RAK3401/RAK13302 bench tester in
+[`rak_fsk_benchtop/`](rak_fsk_benchtop/) — not part of the remote-signal
+analysis flow above. It listens at 915.000 MHz on the stock **FM238** preset
+(2-FSK, ±2.380371 kHz deviation, ~4.8 kbps — CC1101's hardware sync/preamble
+detection is off in this preset, so RollCall does its own bit-sync and framing
+in software, in `subghz/bench_fsk_codec.{h,c}`) for a small framed packet this
+project defines itself (magic/version/type/seq/length/payload/CRC-16 — see
+that header for the exact wire format, which must match
+`rak_fsk_benchtop/src/main.cpp`'s `make_packet`/`parse_packet` exactly, since
+the two are independently-implemented sides of one protocol). Press **Send
+PING** to transmit one burst and watch for the RAK's **PONG** reply; RX/TX
+counts and the last decoded packet are shown live.
+
 ## Building
 
 Built and API-checked against the official firmware SDK (`ufbt`, API 87.1):
@@ -130,7 +146,10 @@ views/diff_view.{h,c}    bit-matrix heatmap view
 views/craft_view.{h,c}   payload editor (hex/bit, Up/Down value, OK-hold send)
 subghz/rollcall_rx.{h,c} live receiver (devices + worker + receiver chain)
 subghz/rollcall_tx.{h,c} transmit engine (key-swap template + hold-repeat)
-scenes/                  start / capture / auto / diff / craft / about
+subghz/bench_fsk_codec.{h,c}     Bench FSK wire format + bit-sync/framing (unit-tested, no Flipper API deps)
+subghz/rollcall_bench_fsk.{h,c}  Bench FSK device glue (raw worker callback, one-shot TX)
+scenes/                  start / capture / auto / diff / craft / bench_fsk / about
+rak_fsk_benchtop/        standalone PlatformIO/Arduino firmware for the RAK3401/RAK13302 bench tester
 ```
 
 ## Status
@@ -138,8 +157,14 @@ scenes/                  start / capture / auto / diff / craft / about
 - Builds clean and passes `APPCHK` against firmware API 87.1.
 - Analysis + predictor are unit-tested on the host (fixed / counter / random /
   carry `7F→80` / fixed-LSB step / irregular / mismatch cases).
+- Bench FSK's codec (`bench_fsk_codec.c`) is unit-tested on the host: clean
+  round-trip, ±50µs jitter, inverted-polarity fallback, noise/gap recovery,
+  and corrupted-CRC rejection. The RAK3401 tester firmware
+  (`rak_fsk_benchtop/`) builds clean under PlatformIO.
 - Live RX, transmit, and the on-device GUI still need validation on real
-  hardware.
+  hardware — this very much includes Bench FSK's actual over-the-air link:
+  the CC1101/SX1262 timing match is verified against real register tables and
+  datasheets, not against an actual RF capture between the two radios.
 
 ## Roadmap
 
