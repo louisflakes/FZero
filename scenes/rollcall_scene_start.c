@@ -6,7 +6,9 @@
 typedef enum {
     StartItemCaptureLive,
     StartItemLoadSub,
+    StartItemAutoAnalysis,
     StartItemAnalyze,
+    StartItemCraft,
     StartItemClear,
     StartItemAbout,
 } StartItem;
@@ -30,10 +32,20 @@ static void rollcall_scene_start_build(RollCall* app) {
     submenu_add_item(
         submenu, "Load .sub file", StartItemLoadSub, rollcall_scene_start_submenu_callback, app);
 
+    submenu_add_item(
+        submenu,
+        "Auto-Analysis",
+        StartItemAutoAnalysis,
+        rollcall_scene_start_submenu_callback,
+        app);
+
     char analyze_label[24];
     snprintf(analyze_label, sizeof(analyze_label), "Analyze (%u)", (unsigned)app->captures.count);
     submenu_add_item(
         submenu, analyze_label, StartItemAnalyze, rollcall_scene_start_submenu_callback, app);
+
+    submenu_add_item(
+        submenu, "Craft & Call", StartItemCraft, rollcall_scene_start_submenu_callback, app);
 
     submenu_add_item(
         submenu, "Clear captures", StartItemClear, rollcall_scene_start_submenu_callback, app);
@@ -93,9 +105,25 @@ bool rollcall_scene_start_on_event(void* context, SceneManagerEvent event) {
             rollcall_scene_start_load_sub(app);
             rollcall_scene_start_build(app);
             break;
+        case StartItemAutoAnalysis:
+            if(app->captures.count >= 2) {
+                scene_manager_next_scene(app->scene_manager, RollCallSceneAuto);
+            } else {
+                notification_message(app->notifications, &sequence_error);
+            }
+            break;
         case StartItemAnalyze:
             if(app->captures.count >= 1) {
                 scene_manager_next_scene(app->scene_manager, RollCallSceneDiff);
+            } else {
+                notification_message(app->notifications, &sequence_error);
+            }
+            break;
+        case StartItemCraft:
+            if(app->captures.count >= 1) {
+                // Seed the editor with the most recent capture (unedited).
+                app->craft_seed = app->captures.items[app->captures.count - 1].key;
+                scene_manager_next_scene(app->scene_manager, RollCallSceneCraft);
             } else {
                 notification_message(app->notifications, &sequence_error);
             }

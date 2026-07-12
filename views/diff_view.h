@@ -9,9 +9,14 @@
 
 typedef struct DiffView DiffView;
 
+// Invoked when the user presses Up in the diff view (jump to Craft & Call).
+typedef void (*DiffCraftCallback)(void* ctx);
+
 DiffView* diff_view_alloc(void);
 void diff_view_free(DiffView* diff_view);
 View* diff_view_get_view(DiffView* diff_view);
 
 // Copy `set` into the view and (re)run the analysis. Resets the bit cursor.
 void diff_view_set_data(DiffView* diff_view, const CaptureSet* set);
+
+void diff_view_set_craft_callback(DiffView* diff_view, DiffCraftCallback cb, void* ctx);

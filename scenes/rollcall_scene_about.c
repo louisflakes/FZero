@@ -15,18 +15,23 @@ void rollcall_scene_about_on_enter(void* context) {
         128,
         50,
         "Capture the same button a few\n"
-        "times, then Analyze to see\n"
-        "which bits are FIXED and which\n"
-        "CHANGE.\n\n"
-        "Solid stripes = fixed (serial,\n"
-        "button id). Noisy columns =\n"
-        "rolling data.\n\n"
-        "Verdict: Fixed code / Counter /\n"
-        "Rolling (random).\n\n"
-        "In the diff: Left/Right move the\n"
-        "bit cursor, OK toggles bits <-> hex.\n\n"
-        "Understanding tool only - it\n"
-        "does not predict or forge codes.");
+        "times (3+), then:\n\n"
+        "AUTO-ANALYSIS finds a counter\n"
+        "and offers the next predicted\n"
+        "burst, ready to send.\n\n"
+        "ANALYZE (manual) shows which\n"
+        "bits are FIXED vs CHANGING.\n"
+        "Left/Right move the cursor, OK\n"
+        "toggles bits <-> hex, Up jumps\n"
+        "to Craft.\n\n"
+        "CRAFT & CALL: fixed bits are\n"
+        "locked; Up/Down step the value;\n"
+        "OK-tap flips a bit; HOLD OK to\n"
+        "transmit (buzzes while sending).\n\n"
+        "TX is region-limited. It sends\n"
+        "fixed/counter codes exactly;\n"
+        "encrypted rolling codes are not\n"
+        "predictable from captures.");
     view_dispatcher_switch_to_view(app->view_dispatcher, RollCallViewWidget);
 }
 

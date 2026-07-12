@@ -7,6 +7,8 @@
 
 struct DiffView {
     View* view;
+    DiffCraftCallback on_craft;
+    void* craft_ctx;
 };
 
 typedef struct {
@@ -205,12 +207,20 @@ static bool diff_view_input(InputEvent* event, void* ctx) {
             }
         },
         consumed);
+
+    // Up -> jump to Craft & Call (seed handled by the scene).
+    if(!consumed && event->key == InputKeyUp) {
+        if(diff_view->on_craft) diff_view->on_craft(diff_view->craft_ctx);
+        consumed = true;
+    }
     // Back (and anything else) falls through to the ViewDispatcher for navigation.
     return consumed;
 }
 
 DiffView* diff_view_alloc(void) {
     DiffView* diff_view = malloc(sizeof(DiffView));
+    diff_view->on_craft = NULL;
+    diff_view->craft_ctx = NULL;
     diff_view->view = view_alloc();
     view_allocate_model(diff_view->view, ViewModelTypeLocking, sizeof(DiffViewModel));
     view_set_context(diff_view->view, diff_view);
@@ -242,4 +252,10 @@ void diff_view_set_data(DiffView* diff_view, const CaptureSet* set) {
             m->show_values = false;
         },
         true);
+}
+
+void diff_view_set_craft_callback(DiffView* diff_view, DiffCraftCallback cb, void* ctx) {
+    furi_assert(diff_view);
+    diff_view->on_craft = cb;
+    diff_view->craft_ctx = ctx;
 }

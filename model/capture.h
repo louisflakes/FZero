@@ -14,11 +14,16 @@
 #define ROLLCALL_MAX_BITS   (ROLLCALL_KEY_BYTES * 8)
 #define ROLLCALL_MAX_CAPTURES 16
 #define ROLLCALL_PROTO_LEN  32
+#define ROLLCALL_PATH_LEN   192
 
 typedef struct {
     char protocol[ROLLCALL_PROTO_LEN];
     uint16_t bit_count; // number of significant bits (1..64)
     uint64_t key; // big-endian value; significant bits are the low `bit_count`
+    // Path to the .sub file this capture came from (loaded file, or a temp file
+    // written for a live capture). Used as the template when transmitting: the
+    // Key is swapped in and everything else (Frequency/Preset/TE/...) is reused.
+    char source_path[ROLLCALL_PATH_LEN];
 } Capture;
 
 typedef struct {

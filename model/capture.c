@@ -83,6 +83,11 @@ bool capture_load_from_sub(Storage* storage, const char* path, Capture* out) {
         ok = capture_from_flipper_format(ff, out);
     } while(false);
 
+    if(ok) {
+        // Remember where it came from so we can transmit it later.
+        strncpy(out->source_path, path, ROLLCALL_PATH_LEN - 1);
+    }
+
     flipper_format_free(ff);
     return ok;
 }

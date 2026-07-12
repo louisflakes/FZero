@@ -7,14 +7,19 @@
 #include <lib/subghz/devices/devices.h>
 #include <lib/subghz/devices/cc1101_int/cc1101_int_interconnect.h>
 #include <lib/flipper_format/flipper_format.h>
+#include <storage/storage.h>
+#include <stdio.h>
 
 #define PRESET_NAME "FuriHalSubGhzPresetOok650Async"
+#define ROLLCALL_TMP_DIR EXT_PATH("subghz/.rollcall")
 
 struct RollCallRx {
     SubGhzEnvironment* environment;
     SubGhzReceiver* receiver;
     SubGhzWorker* worker;
     const SubGhzDevice* device;
+    Storage* storage;
+    uint32_t seq; // makes temp filenames unique within a session
 
     RollCallRxCallback callback;
     void* context;
@@ -29,7 +34,18 @@ static void rollcall_rx_decoded(
     void* context) {
     RollCallRx* rx = context;
 
-    FlipperFormat* ff = flipper_format_string_alloc();
+    // Persist the decode as a temp .sub so it can double as a transmit template.
+    // Unique name (tick + seq) avoids clobbering earlier captures still in the set.
+    char path[ROLLCALL_PATH_LEN];
+    snprintf(
+        path,
+        sizeof(path),
+        "%s/rc_%lu_%lu.sub",
+        ROLLCALL_TMP_DIR,
+        (unsigned long)furi_get_tick(),
+        (unsigned long)rx->seq++);
+
+    FlipperFormat* ff = flipper_format_file_alloc(rx->storage);
     SubGhzRadioPreset preset = {
         .name = furi_string_alloc_set(PRESET_NAME),
         .frequency = rx->frequency,
@@ -37,16 +53,19 @@ static void rollcall_rx_decoded(
         .data_size = 0,
     };
 
-    Capture capture;
-    if(subghz_protocol_decoder_base_serialize(decoder_base, ff, &preset) ==
-       SubGhzProtocolStatusOk) {
-        if(capture_from_flipper_format(ff, &capture) && rx->callback) {
-            rx->callback(rx->context, &capture);
-        }
+    bool wrote = false;
+    if(flipper_format_file_open_always(ff, path)) {
+        wrote = subghz_protocol_decoder_base_serialize(decoder_base, ff, &preset) ==
+                SubGhzProtocolStatusOk;
     }
-
     furi_string_free(preset.name);
-    flipper_format_free(ff);
+    flipper_format_free(ff); // flush + close before reopening to read back
+
+    // Reopen the file to parse it (also sets capture.source_path).
+    Capture capture;
+    if(wrote && capture_load_from_sub(rx->storage, path, &capture) && rx->callback) {
+        rx->callback(rx->context, &capture);
+    }
     subghz_receiver_reset(receiver);
 }
 
@@ -78,8 +97,14 @@ RollCallRx* rollcall_rx_alloc(void) {
         rx->worker, (SubGhzWorkerPairCallback)subghz_receiver_decode);
     subghz_worker_set_context(rx->worker, rx->receiver);
 
-    subghz_devices_init();
+    // subghz_devices_init()/deinit() are owned by the app (rollcall.c) so RX and
+    // TX can coexist; here we just look the device up.
     rx->device = subghz_devices_get_by_name(SUBGHZ_DEVICE_CC1101_INT_NAME);
+
+    rx->storage = furi_record_open(RECORD_STORAGE);
+    storage_common_mkdir(rx->storage, EXT_PATH("subghz"));
+    storage_common_mkdir(rx->storage, ROLLCALL_TMP_DIR);
+    rx->seq = 0;
 
     rx->callback = NULL;
     rx->context = NULL;
@@ -91,10 +116,10 @@ RollCallRx* rollcall_rx_alloc(void) {
 void rollcall_rx_free(RollCallRx* rx) {
     furi_assert(rx);
     rollcall_rx_stop(rx);
-    subghz_devices_deinit();
     subghz_worker_free(rx->worker);
     subghz_receiver_free(rx->receiver);
     subghz_environment_free(rx->environment);
+    furi_record_close(RECORD_STORAGE);
     free(rx);
 }
 

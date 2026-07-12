@@ -53,3 +53,27 @@ void analysis_run(const CaptureSet* set, Analysis* out);
 
 // Human-readable one-liner for the field verdict, e.g. "Rolling (random)".
 const char* analysis_verdict_str(FieldVerdict v);
+
+// --- Prediction (counter / fixed) -----------------------------------------
+// Given a set of captures assumed taken in order, decide whether the next burst
+// is predictable and, if so, what its key would be. Deliberately conservative:
+// it only claims a pattern for a monotonic constant-step counter (or a fixed
+// code with nothing changing). Anything else -> PredictNone -> manual analysis.
+
+typedef enum {
+    PredictNone, // no reliable pattern (irregular, non-monotonic, or high-entropy)
+    PredictFixed, // nothing changes across captures; "next" is identical
+    PredictCounter, // changing field is a monotonic constant-step counter
+} PredictKind;
+
+typedef struct {
+    PredictKind kind;
+    int64_t step; // per-capture increment of the changing field (PredictCounter)
+    uint64_t next_key; // predicted next full key (valid for Fixed and Counter)
+    int field_lo; // changing-field span (display positions), -1 if none
+    int field_hi;
+    bool confident; // true when backed by >= 3 captures
+} PredictResult;
+
+// Requires `analysis` already computed for `set`.
+void analysis_predict(const CaptureSet* set, const Analysis* analysis, PredictResult* out);

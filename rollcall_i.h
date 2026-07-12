@@ -15,7 +15,9 @@
 #include "model/capture.h"
 #include "model/analysis.h"
 #include "views/diff_view.h"
+#include "views/craft_view.h"
 #include "subghz/rollcall_rx.h"
+#include "subghz/rollcall_tx.h"
 
 #define ROLLCALL_TAG "RollCall"
 
@@ -24,6 +26,7 @@ typedef enum {
     RollCallViewWidget,
     RollCallViewPopup,
     RollCallViewDiff,
+    RollCallViewCraft,
 } RollCallView;
 
 // Custom events routed through the ViewDispatcher / SceneManager.
@@ -32,6 +35,11 @@ typedef enum {
     RollCallCustomEventRxCapture = 100,
     // "Analyze" button pressed on the live capture scene.
     RollCallCustomEventCaptureAnalyze,
+    // Auto-Analysis result buttons.
+    RollCallCustomEventAutoLoadBurst,
+    RollCallCustomEventAutoManual,
+    // "Up" pressed in the diff view -> jump to Craft & Call.
+    RollCallCustomEventDiffCraft,
 } RollCallCustomEvent;
 
 typedef struct {
@@ -46,6 +54,7 @@ typedef struct {
     Widget* widget;
     Popup* popup;
     DiffView* diff_view;
+    CraftView* craft_view;
 
     // Data model, shared across scenes.
     CaptureSet captures;
@@ -53,6 +62,12 @@ typedef struct {
     // Live receiver + worker->GUI hand-off queue (active during capture scene).
     RollCallRx* rx;
     FuriMessageQueue* rx_queue;
+
+    // Transmitter (app-lifetime; used by the craft scene).
+    RollCallTx* tx;
+
+    // Seed key handed to the Craft scene (predicted next burst, or last capture).
+    uint64_t craft_seed;
 
     // Frequency used by the live capture scene (Hz).
     uint32_t frequency;

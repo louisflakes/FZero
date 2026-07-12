@@ -104,3 +104,48 @@ void analysis_run(const CaptureSet* set, Analysis* out) {
         out->verdict = FieldVerdictMixed;
     }
 }
+
+// Significant-bits mask for a key of `bit_count` bits.
+static uint64_t key_mask(uint16_t bit_count) {
+    return (bit_count >= 64) ? ~0ull : ((1ull << bit_count) - 1);
+}
+
+void analysis_predict(const CaptureSet* set, const Analysis* a, PredictResult* out) {
+    memset(out, 0, sizeof(PredictResult));
+    out->kind = PredictNone;
+    out->field_lo = -1;
+    out->field_hi = -1;
+
+    if(!set || set->count == 0) return;
+
+    const Capture* last = &set->items[set->count - 1];
+    uint64_t mask = key_mask(a->bit_count);
+    out->next_key = last->key & mask;
+    out->confident = set->count >= 3;
+
+    // Fixed code: nothing changes -> the "next" burst is identical.
+    if(a->changing_bits == 0) {
+        out->kind = PredictFixed;
+        return;
+    }
+
+    // Need at least two samples to measure a step.
+    if(set->count < 2) return;
+    out->field_lo = a->change_lo;
+    out->field_hi = a->change_hi;
+
+    // Treat the whole significant key as an integer: a counter advances it by a
+    // single consistent, non-zero step. Working on the full value (not just the
+    // observed-changing bits) makes carries propagate correctly (0x7F->0x80) and
+    // gives the true step even when a low bit stays fixed (0x10,0x12,0x14 -> +2).
+    int64_t step = (int64_t)((set->items[1].key & mask) - (set->items[0].key & mask));
+    if(step == 0) return;
+    for(size_t i = 2; i < set->count; i++) {
+        int64_t d = (int64_t)((set->items[i].key & mask) - (set->items[i - 1].key & mask));
+        if(d != step) return; // irregular -> not a clean counter
+    }
+
+    out->kind = PredictCounter;
+    out->step = step;
+    out->next_key = (last->key + (uint64_t)step) & mask;
+}

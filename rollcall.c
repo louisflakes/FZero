@@ -5,6 +5,7 @@
 // (counter vs. rolling/random). An analysis tool, not an attack tool.
 #include "rollcall_i.h"
 #include "scenes/rollcall_scene.h"
+#include <lib/subghz/devices/devices.h>
 
 #define ROLLCALL_DEFAULT_FREQUENCY 433920000UL
 
@@ -22,6 +23,10 @@ static bool rollcall_back_event_callback(void* context) {
 
 static RollCall* rollcall_alloc(void) {
     RollCall* app = malloc(sizeof(RollCall));
+
+    // Owns the sub-GHz device registry for the whole app lifetime so the RX and
+    // TX modules can be (de)allocated independently.
+    subghz_devices_init();
 
     app->frequency = ROLLCALL_DEFAULT_FREQUENCY;
     capture_set_reset(&app->captures);
@@ -41,10 +46,14 @@ static RollCall* rollcall_alloc(void) {
     view_dispatcher_set_navigation_event_callback(
         app->view_dispatcher, rollcall_back_event_callback);
 
+    app->tx = rollcall_tx_alloc();
+    app->craft_seed = 0;
+
     app->submenu = submenu_alloc();
     app->widget = widget_alloc();
     app->popup = popup_alloc();
     app->diff_view = diff_view_alloc();
+    app->craft_view = craft_view_alloc();
 
     view_dispatcher_add_view(
         app->view_dispatcher, RollCallViewSubmenu, submenu_get_view(app->submenu));
@@ -54,6 +63,8 @@ static RollCall* rollcall_alloc(void) {
         app->view_dispatcher, RollCallViewPopup, popup_get_view(app->popup));
     view_dispatcher_add_view(
         app->view_dispatcher, RollCallViewDiff, diff_view_get_view(app->diff_view));
+    view_dispatcher_add_view(
+        app->view_dispatcher, RollCallViewCraft, craft_view_get_view(app->craft_view));
 
     view_dispatcher_attach_to_gui(
         app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
@@ -68,11 +79,14 @@ static void rollcall_free(RollCall* app) {
     view_dispatcher_remove_view(app->view_dispatcher, RollCallViewWidget);
     view_dispatcher_remove_view(app->view_dispatcher, RollCallViewPopup);
     view_dispatcher_remove_view(app->view_dispatcher, RollCallViewDiff);
+    view_dispatcher_remove_view(app->view_dispatcher, RollCallViewCraft);
 
     submenu_free(app->submenu);
     widget_free(app->widget);
     popup_free(app->popup);
     diff_view_free(app->diff_view);
+    craft_view_free(app->craft_view);
+    rollcall_tx_free(app->tx);
 
     scene_manager_free(app->scene_manager);
     view_dispatcher_free(app->view_dispatcher);
@@ -81,6 +95,7 @@ static void rollcall_free(RollCall* app) {
     furi_record_close(RECORD_NOTIFICATION);
     furi_record_close(RECORD_GUI);
 
+    subghz_devices_deinit();
     free(app);
 }
 
