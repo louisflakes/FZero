@@ -23,6 +23,8 @@ void rollcall_scene_about_on_enter(void* context) {
         "rolling data.\n\n"
         "Verdict: Fixed code / Counter /\n"
         "Rolling (random).\n\n"
+        "In the diff: Left/Right move the\n"
+        "bit cursor, OK toggles bits <-> hex.\n\n"
         "Understanding tool only - it\n"
         "does not predict or forge codes.");
     view_dispatcher_switch_to_view(app->view_dispatcher, RollCallViewWidget);

@@ -35,10 +35,18 @@ often that bit was `1` across all captures, classifies each bit as fixed or
 changing, and renders a field-level verdict for the contiguous changing block
 (`Fixed code` / `Counter` / `Rolling (random)` / `Mixed`).
 
-The diff view draws a **bit matrix** — one row per capture, one column per bit.
-Fixed bits show up as clean vertical stripes; changing bits look noisy, so the
-structure is legible at a glance. Left/Right move a cursor to inspect any bit
-(`ones/n` and its class).
+The diff view draws a **bit matrix** — one row per capture, one column per bit
+(filled cell = 1, empty cell = 0). Fixed bits show up as clean vertical stripes;
+changing bits look noisy, so the structure is legible at a glance. Below it, a
+classification strip marks each bit fixed (thin line) or changing (tall bar).
+
+Controls in the diff view:
+
+- **Left / Right** — move the bit cursor; the footer shows that bit's value in
+  each file (e.g. `b11 chg 1 0 1`) and whether it's `fix`ed or `chg`ing.
+- **OK** — toggle **bits ↔ hex**: the hex view lists each capture's key as a hex
+  value with the differing digits boxed, so you can read the actual bytes.
+- **Back** — return to the menu.
 
 ## Usage
 
