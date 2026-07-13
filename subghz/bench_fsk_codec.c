@@ -56,7 +56,7 @@ bool bench_fsk_parse_frame(const uint8_t* data, size_t length, BenchFskPacket* o
 }
 
 size_t bench_fsk_waveform_len(size_t frame_len) {
-    return BENCH_FSK_PREAMBLE_BITS + BENCH_FSK_SYNC_BITS + frame_len * 8;
+    return BENCH_FSK_PREAMBLE_BITS + BENCH_FSK_SYNC_BITS + 8 + frame_len * 8;
 }
 
 size_t bench_fsk_build_waveform(
@@ -78,6 +78,14 @@ size_t bench_fsk_build_waveform(
     }
     for(int b = BENCH_FSK_SYNC_BITS - 1; b >= 0; b--) {
         out_levels[idx] = ((BENCH_FSK_SYNC_WORD >> b) & 1u) != 0;
+        out_durations[idx] = BENCH_FSK_TE_US;
+        idx++;
+    }
+    // Hardware length byte: the RAK's SX1262 packet engine auto-inserts one
+    // here in variablePacketLengthMode(); mimic it so the RAK's own receive()
+    // (which expects the same framing symmetrically) can parse our waveform.
+    for(int b = 7; b >= 0; b--) {
+        out_levels[idx] = (((uint8_t)frame_len >> b) & 1u) != 0;
         out_durations[idx] = BENCH_FSK_TE_US;
         idx++;
     }
@@ -138,10 +146,16 @@ bool bench_fsk_decoder_feed(
             if(dec->shift == BENCH_FSK_SYNC_WORD) {
                 dec->synced = true;
                 dec->inverted = false;
+                dec->skip_bits = 8;
             } else if(dec->shift == (~BENCH_FSK_SYNC_WORD & 0xFFFFu)) {
                 dec->synced = true;
                 dec->inverted = true;
+                dec->skip_bits = 8;
             }
+        } else if(dec->skip_bits > 0) {
+            // Discard the SX1262 packet engine's auto-inserted length byte;
+            // it isn't part of our own frame (see bench_fsk_build_waveform).
+            dec->skip_bits--;
         } else {
             bench_fsk_feed_synced_bit(dec, level);
             if(!found && dec->total_len != 0 && dec->byte_count == dec->total_len) {

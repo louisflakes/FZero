@@ -9,7 +9,10 @@
 
 #define BENCH_FSK_FREQUENCY 915000000UL
 #define BENCH_FSK_PRESET FuriHalSubGhzPreset2FSKDev238Async
-#define BENCH_FSK_MAX_WAVEFORM 472 // bench_fsk_waveform_len(BENCH_FSK_MAX_PACKET)
+// bench_fsk_waveform_len(BENCH_FSK_MAX_PACKET): preamble(16) + sync(16) +
+// HW length byte(8) + BENCH_FSK_MAX_PACKET*8. Not computed via the function
+// itself since this sizes a fixed struct member, not a runtime buffer.
+#define BENCH_FSK_MAX_WAVEFORM (16 + 16 + 8 + BENCH_FSK_MAX_PACKET * 8)
 
 typedef struct {
     bool levels[BENCH_FSK_MAX_WAVEFORM];

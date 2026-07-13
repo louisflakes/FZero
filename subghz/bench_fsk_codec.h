@@ -14,9 +14,17 @@
 //
 // Frame on air (MSB-first per byte, NRZ):
 //   [16 alternating bits, radio settling] [16-bit sync 0xD391]
-//   [Magic 0xA5][Version 0x01][Type][Seq][PayloadLen][payload...][CRC16 hi][CRC16 lo]
+//   [HW length byte] [Magic 0xA5][Version 0x01][Type][Seq][PayloadLen][payload...][CRC16 hi][CRC16 lo]
 // This must match rak_fsk_benchtop/src/main.cpp's make_packet/parse_packet
 // exactly -- the two are independently-implemented sides of one wire format.
+//
+// The "HW length byte" isn't part of our own frame -- the RAK's SX1262 runs
+// in variablePacketLengthMode(), a hardware packet-engine feature that
+// auto-inserts one length byte on air right after its hardware sync word,
+// ahead of whatever buffer the app passes to transmit()/expects from
+// receive(). Both this decoder and bench_fsk_build_waveform() (which mimics
+// the SX1262's on-air framing so the Flipper's own hand-built TX waveform is
+// something the RAK's receive() can parse) account for that extra byte.
 
 #define BENCH_FSK_MAGIC 0xA5
 #define BENCH_FSK_VERSION 0x01
@@ -84,6 +92,7 @@ typedef struct {
     uint32_t shift; // rolling window of the most recently seen bits
     bool synced;
     bool inverted;
+    uint8_t skip_bits; // bits still to discard after sync (the HW length byte)
     uint8_t cur_byte;
     uint8_t cur_bit_in_byte;
     uint8_t bytes[BENCH_FSK_MAX_PACKET];
