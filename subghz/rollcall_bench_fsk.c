@@ -155,13 +155,20 @@ bool rollcall_bench_fsk_send_ping(RollCallBenchFsk* bf) {
     bool sent = false;
     if(subghz_devices_set_tx(bf->device)) {
         subghz_devices_start_async_tx(bf->device, bench_fsk_tx_yield, &bf->tx_gen);
-        // A full frame is ~472 bits * 208us =~ 98ms; poll for completion with
+        // A full frame is ~480 bits * 208us =~ 100ms; poll for completion with
         // a generous cap so a stuck radio can't hang the UI thread forever.
-        for(int waited_ms = 0; waited_ms < 500; waited_ms += 5) {
+        int waited_ms = 0;
+        for(; waited_ms < 500; waited_ms += 5) {
             if(subghz_devices_is_async_complete_tx(bf->device)) break;
             furi_delay_ms(5);
         }
         subghz_devices_stop_async_tx(bf->device);
+        FURI_LOG_I(
+            "RollCallBenchFsk",
+            "tx: streamed %u/%u entries in ~%dms",
+            (unsigned)bf->tx_gen.pos,
+            (unsigned)bf->tx_gen.count,
+            waited_ms);
         bf->tx_seq++;
         bf->tx_count++;
         sent = true;
