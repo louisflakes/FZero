@@ -9,6 +9,9 @@
 // constant across zoom levels. See specter_i.h for the fixed v1 constants.
 #include "specter_i.h"
 #include "scenes/specter_scene.h"
+#include "views/scope_view.h"
+#include "subghz/specter_scan.h"
+#include <lib/subghz/devices/devices.h>
 
 static bool specter_custom_event_callback(void* context, uint32_t event) {
     furi_assert(context);
@@ -25,6 +28,10 @@ static bool specter_back_event_callback(void* context) {
 static Specter* specter_alloc(void) {
     Specter* app = malloc(sizeof(Specter));
 
+    // Own the sub-GHz device registry for the app lifetime; the scan engine
+    // just looks the device up.
+    subghz_devices_init();
+
     app->band_select = SpecterBandSelect779_928;
     app->decay = SpecterDecayMedium;
 
@@ -40,6 +47,9 @@ static Specter* specter_alloc(void) {
 
     app->widget = widget_alloc();
     app->variable_item_list = variable_item_list_alloc();
+    app->scope_view = scope_view_alloc();
+    app->scan = specter_scan_alloc();
+    app->scan_timer = NULL;
 
     view_dispatcher_add_view(
         app->view_dispatcher, SpecterViewWidget, widget_get_view(app->widget));
@@ -47,6 +57,8 @@ static Specter* specter_alloc(void) {
         app->view_dispatcher,
         SpecterViewVariableItemList,
         variable_item_list_get_view(app->variable_item_list));
+    view_dispatcher_add_view(
+        app->view_dispatcher, SpecterViewScope, scope_view_get_view(app->scope_view));
 
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
@@ -58,14 +70,18 @@ static void specter_free(Specter* app) {
 
     view_dispatcher_remove_view(app->view_dispatcher, SpecterViewWidget);
     view_dispatcher_remove_view(app->view_dispatcher, SpecterViewVariableItemList);
+    view_dispatcher_remove_view(app->view_dispatcher, SpecterViewScope);
 
     widget_free(app->widget);
     variable_item_list_free(app->variable_item_list);
+    scope_view_free(app->scope_view);
+    specter_scan_free(app->scan);
 
     scene_manager_free(app->scene_manager);
     view_dispatcher_free(app->view_dispatcher);
 
     furi_record_close(RECORD_GUI);
+    subghz_devices_deinit();
     free(app);
 }
 

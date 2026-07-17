@@ -62,3 +62,25 @@ const char* specter_decay_label(SpecterDecay decay) {
         return "Long";
     }
 }
+
+uint32_t specter_band_min_hz(const SpecterBand* band) {
+    return band->ranges[0].start_hz;
+}
+
+uint32_t specter_band_max_hz(const SpecterBand* band) {
+    return band->ranges[band->range_count - 1].end_hz;
+}
+
+float specter_decay_rate(SpecterDecay decay) {
+    switch(decay) {
+    case SpecterDecayOff:
+        return 0.0f; // no persistence marker
+    case SpecterDecayShort:
+        return 6.0f;
+    case SpecterDecayMedium:
+        return 3.0f;
+    case SpecterDecayLong:
+    default:
+        return 1.0f;
+    }
+}
