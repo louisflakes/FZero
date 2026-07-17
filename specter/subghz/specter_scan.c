@@ -132,6 +132,11 @@ static int32_t specter_scan_thread(void* context) {
         scan->published = work;
         scan->has_published = true;
         furi_mutex_release(scan->mutex);
+
+        // Yield to the scheduler between sweeps. The per-hop settle uses
+        // furi_delay_us (a busy-wait), so without this the loop never sleeps
+        // and starves the GUI/timer threads even though it's lower priority.
+        furi_delay_ms(2);
     }
 
     subghz_devices_idle(scan->device);
@@ -177,7 +182,10 @@ bool specter_scan_start(SpecterScan* scan) {
     if(!scan->device) return false;
 
     scan->running = true;
-    scan->thread = furi_thread_alloc_ex("SpecterScan", 2048, specter_scan_thread, scan);
+    scan->thread = furi_thread_alloc_ex("SpecterScan", 4096, specter_scan_thread, scan);
+    // Below the GUI (Normal=16) so input and the redraw timer always preempt
+    // the acquisition loop -- otherwise the busy-wait settle starves the UI.
+    furi_thread_set_priority(scan->thread, FuriThreadPriorityLow);
     furi_thread_start(scan->thread);
     return true;
 }
