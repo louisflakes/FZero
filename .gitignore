@@ -1,9 +1,9 @@
-# ufbt build output
-/dist/
+# ufbt build output (each app subdirectory gets its own dist/ + .vscode/)
+dist/
 /.ufbt/
 *.fap
 *.elf
 
 # editor / tooling
-/.vscode/
+.vscode/
 compile_commands.json

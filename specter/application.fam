@@ -1,0 +1,14 @@
+App(
+    appid="specter",
+    name="Specter",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="specter_app",
+    stack_size=4 * 1024,
+    fap_category="Sub-GHz",
+    fap_version="0.1",
+    fap_icon="specter.png",  # 10x10 1-bit PNG
+    fap_description="Real-time sub-GHz spectrum scope: tiered zoom (25/10/2.5 MHz), persistence display, random-order bin sampling.",
+    fap_author="louisflakes",
+    fap_weburl="https://github.com/louisflakes/fzero",
+    fap_icon_assets="images",
+)
