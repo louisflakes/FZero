@@ -20,7 +20,14 @@ static void specter_scene_scan_window_cb(void* ctx, uint32_t start_hz, uint32_t 
 static void specter_scene_scan_timer_cb(void* ctx) {
     Specter* app = ctx;
     SpecterScanResult result;
-    if(specter_scan_snapshot(app->scan, &result)) {
+    bool ok = specter_scan_snapshot(app->scan, &result);
+    scope_view_set_debug(
+        app->scope_view,
+        ok,
+        ok ? result.sweep_count : 0,
+        ok ? result.start_hz : 0,
+        ok ? result.span_hz : 0);
+    if(ok) {
         scope_view_push_data(app->scope_view, &result);
     }
 }
@@ -36,7 +43,8 @@ void specter_scene_scan_on_enter(void* context) {
     uint32_t start_hz, span_hz;
     scope_view_get_window(app->scope_view, &start_hz, &span_hz);
     specter_scan_set_window(app->scan, start_hz, span_hz);
-    specter_scan_start(app->scan);
+    bool started = specter_scan_start(app->scan);
+    scope_view_set_started(app->scope_view, started);
 
     // Redraw timer pumps engine -> view on the GUI thread.
     app->scan_timer =

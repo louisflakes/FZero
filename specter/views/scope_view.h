@@ -46,3 +46,14 @@ void scope_view_set_window_callback(
 // window doesn't match the current view window (stale after a pan/zoom).
 // Applies persistence decay.
 void scope_view_push_data(SpecterScopeView* scope, const SpecterScanResult* result);
+
+// Diagnostic overlay (shown while no data has rendered yet). Lets us see, on
+// screen, whether the worker started, whether snapshots are arriving, the
+// sweep count, and the window the worker actually scanned vs. the view's.
+void scope_view_set_started(SpecterScopeView* scope, bool started);
+void scope_view_set_debug(
+    SpecterScopeView* scope,
+    bool snapshot_ok,
+    uint32_t sweep_count,
+    uint32_t res_start_hz,
+    uint32_t res_span_hz);

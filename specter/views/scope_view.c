@@ -41,6 +41,13 @@ typedef struct {
     int dbm_floor;
     uint32_t sweep_ms;
     bool have_data;
+
+    // Diagnostic state (surfaced while have_data == false).
+    bool dbg_started;
+    bool dbg_snapshot;
+    uint32_t dbg_sweeps;
+    uint32_t dbg_res_start;
+    uint32_t dbg_res_span;
 } SpecterScopeModel;
 
 static uint32_t scope_tier_span(SpecterTier tier) {
@@ -119,7 +126,27 @@ static void scope_view_draw(Canvas* canvas, void* ctx) {
 
     if(!m->have_data) {
         canvas_draw_str_aligned(
-            canvas, 64, PLOT_TOP + PLOT_H / 2, AlignCenter, AlignCenter, "scanning...");
+            canvas, 64, PLOT_TOP + 6, AlignCenter, AlignCenter, "scanning...");
+        // Diagnostic: started? snapshots arriving? sweep count? window match?
+        char d1[40];
+        snprintf(
+            d1,
+            sizeof(d1),
+            "start:%d snap:%d sw:%lu",
+            m->dbg_started ? 1 : 0,
+            m->dbg_snapshot ? 1 : 0,
+            (unsigned long)m->dbg_sweeps);
+        canvas_draw_str_aligned(canvas, 64, PLOT_TOP + 20, AlignCenter, AlignCenter, d1);
+        char d2[48];
+        snprintf(
+            d2,
+            sizeof(d2),
+            "res %lu/%lu  win %lu/%lu",
+            (unsigned long)(m->dbg_res_start / 1000000UL),
+            (unsigned long)(m->dbg_res_span / 1000000UL),
+            (unsigned long)(m->start_hz / 1000000UL),
+            (unsigned long)(m->span_hz / 1000000UL));
+        canvas_draw_str_aligned(canvas, 64, PLOT_TOP + 32, AlignCenter, AlignCenter, d2);
         return;
     }
 
@@ -259,6 +286,31 @@ void scope_view_set_window_callback(
     furi_assert(scope);
     scope->on_window = cb;
     scope->window_ctx = ctx;
+}
+
+void scope_view_set_started(SpecterScopeView* scope, bool started) {
+    furi_assert(scope);
+    with_view_model(
+        scope->view, SpecterScopeModel * m, { m->dbg_started = started; }, true);
+}
+
+void scope_view_set_debug(
+    SpecterScopeView* scope,
+    bool snapshot_ok,
+    uint32_t sweep_count,
+    uint32_t res_start_hz,
+    uint32_t res_span_hz) {
+    furi_assert(scope);
+    with_view_model(
+        scope->view,
+        SpecterScopeModel * m,
+        {
+            m->dbg_snapshot = snapshot_ok;
+            m->dbg_sweeps = sweep_count;
+            m->dbg_res_start = res_start_hz;
+            m->dbg_res_span = res_span_hz;
+        },
+        true);
 }
 
 void scope_view_push_data(SpecterScopeView* scope, const SpecterScanResult* result) {
