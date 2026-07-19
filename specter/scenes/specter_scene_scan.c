@@ -34,16 +34,21 @@ static void specter_scene_scan_timer_cb(void* ctx) {
 
 void specter_scene_scan_on_enter(void* context) {
     Specter* app = context;
+    FURI_LOG_I(SPECTER_TAG, "scan scene on_enter");
     const SpecterBand* band = specter_band_get(app->band_select);
 
     scope_view_configure(app->scope_view, band, app->decay);
     scope_view_set_window_callback(app->scope_view, specter_scene_scan_window_cb, app);
+    FURI_LOG_I(SPECTER_TAG, "scope_view configured");
 
     // Seed the engine with the view's initial window, then start scanning.
     uint32_t start_hz, span_hz;
     scope_view_get_window(app->scope_view, &start_hz, &span_hz);
+    FURI_LOG_I(
+        SPECTER_TAG, "initial window %lu/%lu", (unsigned long)start_hz, (unsigned long)span_hz);
     specter_scan_set_window(app->scan, start_hz, span_hz);
     bool started = specter_scan_start(app->scan);
+    FURI_LOG_I(SPECTER_TAG, "specter_scan_start returned %d", started);
     scope_view_set_started(app->scope_view, started);
 
     // Redraw timer pumps engine -> view on the GUI thread.
@@ -52,6 +57,7 @@ void specter_scene_scan_on_enter(void* context) {
     furi_timer_start(app->scan_timer, furi_ms_to_ticks(SPECTER_REDRAW_PERIOD_MS));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, SpecterViewScope);
+    FURI_LOG_I(SPECTER_TAG, "switched to scope view");
 }
 
 bool specter_scene_scan_on_event(void* context, SceneManagerEvent event) {

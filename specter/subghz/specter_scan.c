@@ -60,14 +60,22 @@ static inline uint32_t specter_bin_freq(uint32_t start_hz, uint32_t span_hz, uin
 
 static int32_t specter_scan_thread(void* context) {
     SpecterScan* scan = context;
+    FURI_LOG_I(
+        "SpecterScan",
+        "scan thread start, device=%p name=%s",
+        (void*)scan->device,
+        scan->device ? subghz_devices_get_name(scan->device) : "NULL");
 
     subghz_devices_reset(scan->device);
+    FURI_LOG_I("SpecterScan", "reset ok");
     subghz_devices_idle(scan->device);
+    FURI_LOG_I("SpecterScan", "idle ok");
 
     uint8_t order[SPECTER_BINS];
     for(uint32_t i = 0; i < SPECTER_BINS; i++) order[i] = (uint8_t)i;
 
     uint32_t last_preset_span = 0;
+    uint32_t sweep_num = 0;
 
     while(scan->running) {
         // Snapshot the requested window.
@@ -83,9 +91,11 @@ static int32_t specter_scan_thread(void* context) {
 
         // (Re)load the preset only when the span band changes.
         if(span_hz != last_preset_span) {
+            FURI_LOG_I("SpecterScan", "loading preset for span=%lu", (unsigned long)span_hz);
             subghz_devices_idle(scan->device);
             subghz_devices_load_preset(scan->device, specter_preset_for_span(span_hz), NULL);
             last_preset_span = span_hz;
+            FURI_LOG_I("SpecterScan", "preset loaded");
         }
 
         // Fisher-Yates shuffle the visit order for this sweep.
@@ -105,6 +115,12 @@ static int32_t specter_scan_thread(void* context) {
         }
 
         uint32_t t_start = furi_get_tick();
+        FURI_LOG_I(
+            "SpecterScan",
+            "sweep %lu start: window=%lu/%lu",
+            (unsigned long)sweep_num,
+            (unsigned long)start_hz,
+            (unsigned long)span_hz);
 
         for(uint32_t k = 0; k < SPECTER_BINS && scan->running; k++) {
             uint32_t bin = order[k];
@@ -112,7 +128,18 @@ static int32_t specter_scan_thread(void* context) {
 
             // Out-of-band / region-disallowed bins are skipped, not scanned
             // (set_frequency would otherwise crash on an invalid frequency).
-            if(!subghz_devices_is_frequency_valid(scan->device, freq)) continue;
+            if(!subghz_devices_is_frequency_valid(scan->device, freq)) {
+                FURI_LOG_I("SpecterScan", "hop %lu bin=%lu freq=%lu SKIP invalid",
+                    (unsigned long)k, (unsigned long)bin, (unsigned long)freq);
+                continue;
+            }
+
+            FURI_LOG_I(
+                "SpecterScan",
+                "hop %lu bin=%lu freq=%lu",
+                (unsigned long)k,
+                (unsigned long)bin,
+                (unsigned long)freq);
 
             subghz_devices_idle(scan->device);
             subghz_devices_set_frequency(scan->device, freq);
@@ -125,6 +152,12 @@ static int32_t specter_scan_thread(void* context) {
 
         subghz_devices_idle(scan->device);
         work.sweep_ms = furi_get_tick() - t_start;
+        FURI_LOG_I(
+            "SpecterScan",
+            "sweep %lu done: %lums",
+            (unsigned long)sweep_num,
+            (unsigned long)work.sweep_ms);
+        sweep_num++;
 
         // Publish the completed sweep.
         furi_mutex_acquire(scan->mutex, FuriWaitForever);
