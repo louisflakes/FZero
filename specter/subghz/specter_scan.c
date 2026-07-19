@@ -145,11 +145,16 @@ static int32_t specter_scan_thread(void* context) {
                 (unsigned long)freq);
 
             subghz_devices_idle(scan->device);
+            FURI_LOG_D("SpecterScan", "  idle ok");
             subghz_devices_set_frequency(scan->device, freq);
+            FURI_LOG_D("SpecterScan", "  set_frequency ok");
             subghz_devices_set_rx(scan->device);
+            FURI_LOG_D("SpecterScan", "  set_rx ok");
             furi_delay_us(SPECTER_SETTLE_US);
+            FURI_LOG_D("SpecterScan", "  settle ok");
 
             work.rssi[bin] = subghz_devices_get_rssi(scan->device);
+            FURI_LOG_D("SpecterScan", "  get_rssi ok: %d", (int)work.rssi[bin]);
             work.valid[bin] = true;
         }
 
