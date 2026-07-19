@@ -5,12 +5,15 @@
 #include <furi_hal_random.h>
 #include <string.h>
 
-// Per-hop RX settle before reading RSSI (us). The stock frequency analyzer
-// uses a fixed 2000us here; we use far less since set_frequency already waits
-// for PLL calibration to reach IDLE, and the RSSI filter settles within a
-// handful of samples at these bandwidths. Tunable; sweep_ms is logged so this
-// can be dialed in against real hardware.
-#define SPECTER_SETTLE_US 200
+// Per-hop RX settle before reading RSSI (us). Matches the stock frequency
+// analyzer's proven-safe value. An earlier, much more aggressive 200us
+// setting hung the device solid (no crash, no log output) after ~30+ sweeps
+// of sustained idle/retune/RX cycling on real hardware -- likely wedging the
+// CC1101 into a state where the firmware's internal "wait for IDLE" poll
+// spins forever (no hard timeout on that path). Reliability beats raw sweep
+// speed; re-tune down from here only with real stability testing, not a
+// blind guess.
+#define SPECTER_SETTLE_US 2000
 
 // Below this the reading is treated as "no data" rather than a real floor.
 #define SPECTER_RSSI_FLOOR -127.0f
