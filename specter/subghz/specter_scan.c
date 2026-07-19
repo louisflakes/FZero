@@ -21,8 +21,9 @@
 struct SpecterScan {
     const SubGhzDevice* device;
     FuriThread* thread;
-    FuriMutex* mutex; // guards window_* and published
+    FuriMutex* mutex; // guards window_*, active, and published
     volatile bool running;
+    bool active; // hold-to-scan: false = radio parked idle, no SPI at all
 
     // Requested window (written by GUI, read by worker at each sweep start).
     uint32_t window_start_hz;
@@ -79,13 +80,33 @@ static int32_t specter_scan_thread(void* context) {
 
     uint32_t last_preset_span = 0;
     uint32_t sweep_num = 0;
+    bool was_active = false;
 
     while(scan->running) {
-        // Snapshot the requested window.
+        // Snapshot the requested window + hold-to-scan state.
         furi_mutex_acquire(scan->mutex, FuriWaitForever);
         uint32_t start_hz = scan->window_start_hz;
         uint32_t span_hz = scan->window_span_hz;
+        bool active = scan->active;
         furi_mutex_release(scan->mutex);
+
+        if(!active) {
+            // Park the radio idle exactly once on the active->inactive edge,
+            // then touch no SPI at all while released -- this is the whole
+            // point of the hold-to-scan test: zero acquire/release cycles
+            // between bursts, unlike continuous background scanning.
+            if(was_active) {
+                subghz_devices_idle(scan->device);
+                FURI_LOG_I("SpecterScan", "parked idle (OK released)");
+                was_active = false;
+            }
+            furi_delay_ms(20);
+            continue;
+        }
+        if(!was_active) {
+            FURI_LOG_I("SpecterScan", "scanning (OK pressed)");
+            was_active = true;
+        }
 
         if(span_hz == 0) {
             furi_delay_ms(10);
@@ -193,6 +214,7 @@ SpecterScan* specter_scan_alloc(void) {
     scan->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     scan->thread = NULL;
     scan->running = false;
+    scan->active = false;
     scan->window_start_hz = 0;
     scan->window_span_hz = 0;
     memset(&scan->published, 0, sizeof(scan->published));
@@ -214,6 +236,13 @@ void specter_scan_set_window(SpecterScan* scan, uint32_t start_hz, uint32_t span
     furi_mutex_acquire(scan->mutex, FuriWaitForever);
     scan->window_start_hz = start_hz;
     scan->window_span_hz = span_hz;
+    furi_mutex_release(scan->mutex);
+}
+
+void specter_scan_set_active(SpecterScan* scan, bool active) {
+    furi_assert(scan);
+    furi_mutex_acquire(scan->mutex, FuriWaitForever);
+    scan->active = active;
     furi_mutex_release(scan->mutex);
 }
 

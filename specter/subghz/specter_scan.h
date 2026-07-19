@@ -40,9 +40,18 @@ void specter_scan_free(SpecterScan* scan);
 void specter_scan_set_window(SpecterScan* scan, uint32_t start_hz, uint32_t span_hz);
 
 // Start / stop the worker thread. start() returns false if the device is
-// unavailable.
+// unavailable. The thread runs the whole scene lifetime; use
+// specter_scan_set_active() to actually key the radio on/off.
 bool specter_scan_start(SpecterScan* scan);
 void specter_scan_stop(SpecterScan* scan);
+
+// TEST/diagnostic: hold-to-scan. While inactive the worker parks the radio in
+// idle and touches no SPI at all (zero acquire/release cycles) rather than
+// scanning continuously -- bounding each active burst to however long OK is
+// held, much closer to the stock frequency analyzer's proven short-burst
+// usage pattern, to test whether sustained continuous cycling is what causes
+// the SPI-acquire hang (furi_hal_subghz_rx() blocking indefinitely).
+void specter_scan_set_active(SpecterScan* scan, bool active);
 
 // Copy the most recently published sweep. Thread-safe. Returns false if no
 // sweep has completed yet.

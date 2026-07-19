@@ -1,14 +1,20 @@
 // Specter scope view: renders a windowed RSSI spectrum with peak-hold
 // persistence, and owns the pan/zoom/dBm-scale input.
 //
-// Controls:
-//   OK (short)    cycle tier: Coarse(25M) -> Mid(10M) -> Fine(2.5M) -> ...
-//                 (keeps the window centered on the same frequency)
+// Controls (TEMPORARY test build -- hold-to-scan, see specter_scan.h):
+//   OK (hold)     scan while held; releasing parks the radio idle and
+//                 freezes whatever's on screen. Testing whether bounding
+//                 each active burst (vs. continuous background scanning)
+//                 avoids the SPI-acquire hang in furi_hal_subghz_rx().
 //   Left / Right  slide the window across the band (clamped to band edges)
 //   Up / Down     pan the visible dBm range up / down
 //   Back          falls through to the ViewDispatcher (leaves the scene)
 //
-// The view is the source of truth for the window; when the user pans/zooms it
+// Tier cycling (previously OK-short) is temporarily dropped since OK is now
+// dedicated to hold-to-scan -- to be restored on a different input once the
+// hang fix direction is confirmed.
+//
+// The view is the source of truth for the window; when the user pans it
 // fires a callback so the scene can push the new window to the scan engine.
 // The scene periodically pushes fresh sweep data in via scope_view_push_data.
 #pragma once
@@ -22,6 +28,10 @@ typedef struct SpecterScopeView SpecterScopeView;
 // Fired when the user changes the window (pan or tier). The scene should push
 // the new window to the scan engine.
 typedef void (*SpecterScopeWindowCallback)(void* ctx, uint32_t start_hz, uint32_t span_hz);
+
+// Fired on OK press (active=true) / release (active=false). The scene should
+// call specter_scan_set_active() accordingly.
+typedef void (*SpecterScopeActiveCallback)(void* ctx, bool active);
 
 SpecterScopeView* scope_view_alloc(void);
 void scope_view_free(SpecterScopeView* scope);
@@ -40,6 +50,11 @@ void scope_view_get_window(SpecterScopeView* scope, uint32_t* start_hz, uint32_t
 void scope_view_set_window_callback(
     SpecterScopeView* scope,
     SpecterScopeWindowCallback cb,
+    void* ctx);
+
+void scope_view_set_active_callback(
+    SpecterScopeView* scope,
+    SpecterScopeActiveCallback cb,
     void* ctx);
 
 // Push a fresh sweep (from the scene's redraw timer). Ignored if the result's

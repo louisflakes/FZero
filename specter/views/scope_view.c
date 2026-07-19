@@ -24,6 +24,8 @@ struct SpecterScopeView {
     View* view;
     SpecterScopeWindowCallback on_window;
     void* window_ctx;
+    SpecterScopeActiveCallback on_active;
+    void* active_ctx;
 };
 
 typedef struct {
@@ -130,7 +132,7 @@ static void scope_view_draw(Canvas* canvas, void* ctx) {
 
     if(!m->have_data) {
         canvas_draw_str_aligned(
-            canvas, 64, PLOT_TOP + 6, AlignCenter, AlignCenter, "scanning...");
+            canvas, 64, PLOT_TOP + 6, AlignCenter, AlignCenter, "hold OK to scan");
         // Diagnostic: started? snapshots arriving? sweep count? window match?
         char d1[40];
         snprintf(
@@ -173,6 +175,17 @@ static void scope_view_draw(Canvas* canvas, void* ctx) {
 
 static bool scope_view_input(InputEvent* event, void* ctx) {
     SpecterScopeView* scope = ctx;
+
+    // Hold-to-scan (test build): OK press/release gates the scan engine
+    // directly, independent of the Short/Repeat handling below.
+    if(event->key == InputKeyOk &&
+       (event->type == InputTypePress || event->type == InputTypeRelease)) {
+        if(scope->on_active) {
+            scope->on_active(scope->active_ctx, event->type == InputTypePress);
+        }
+        return true;
+    }
+
     if(event->type != InputTypeShort && event->type != InputTypeRepeat) {
         return false;
     }
@@ -194,16 +207,6 @@ static bool scope_view_input(InputEvent* event, void* ctx) {
                 window_changed = true;
             } else if(event->key == InputKeyRight) {
                 m->start_hz += pan_step;
-                scope_clamp_window(m);
-                scope_reset_data(m);
-                consumed = true;
-                window_changed = true;
-            } else if(event->key == InputKeyOk) {
-                // Cycle tier, keeping the same center frequency.
-                uint32_t center = m->start_hz + m->span_hz / 2;
-                m->tier = (m->tier + 1) % 3;
-                m->span_hz = scope_tier_span(m->tier);
-                m->start_hz = (center > m->span_hz / 2) ? center - m->span_hz / 2 : 0;
                 scope_clamp_window(m);
                 scope_reset_data(m);
                 consumed = true;
@@ -232,6 +235,8 @@ SpecterScopeView* scope_view_alloc(void) {
     SpecterScopeView* scope = malloc(sizeof(SpecterScopeView));
     scope->on_window = NULL;
     scope->window_ctx = NULL;
+    scope->on_active = NULL;
+    scope->active_ctx = NULL;
     scope->view = view_alloc();
     view_allocate_model(scope->view, ViewModelTypeLocking, sizeof(SpecterScopeModel));
     view_set_context(scope->view, scope);
@@ -290,6 +295,15 @@ void scope_view_set_window_callback(
     furi_assert(scope);
     scope->on_window = cb;
     scope->window_ctx = ctx;
+}
+
+void scope_view_set_active_callback(
+    SpecterScopeView* scope,
+    SpecterScopeActiveCallback cb,
+    void* ctx) {
+    furi_assert(scope);
+    scope->on_active = cb;
+    scope->active_ctx = ctx;
 }
 
 void scope_view_set_started(SpecterScopeView* scope, bool started) {

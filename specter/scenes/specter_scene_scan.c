@@ -17,6 +17,12 @@ static void specter_scene_scan_window_cb(void* ctx, uint32_t start_hz, uint32_t 
     specter_scan_set_window(app->scan, start_hz, span_hz);
 }
 
+// Fired on OK press/release; gates the hold-to-scan test.
+static void specter_scene_scan_active_cb(void* ctx, bool active) {
+    Specter* app = ctx;
+    specter_scan_set_active(app->scan, active);
+}
+
 static void specter_scene_scan_timer_cb(void* ctx) {
     Specter* app = ctx;
     SpecterScanResult result;
@@ -39,6 +45,7 @@ void specter_scene_scan_on_enter(void* context) {
 
     scope_view_configure(app->scope_view, band, app->decay);
     scope_view_set_window_callback(app->scope_view, specter_scene_scan_window_cb, app);
+    scope_view_set_active_callback(app->scope_view, specter_scene_scan_active_cb, app);
     FURI_LOG_I(SPECTER_TAG, "scope_view configured");
 
     // Seed the engine with the view's initial window, then start scanning.
