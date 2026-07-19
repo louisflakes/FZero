@@ -14,7 +14,11 @@
 #define DBM_FLOOR_MIN -120
 #define DBM_FLOOR_MAX -30
 #define DBM_FLOOR_STEP 5
-#define DBM_FLOOR_DEFAULT -100
+// -100 (the old default) sat right at/above the real noise floor (typically
+// reading -101 to -104 dBm on real hardware), so every bar rendered at ~zero
+// height and the display looked empty even though acquisition was working
+// fine. -115 gives real noise some visible "grass" by default.
+#define DBM_FLOOR_DEFAULT -115
 
 struct SpecterScopeView {
     View* view;
